@@ -98,6 +98,69 @@ class Storage extends \yii\db\ActiveRecord
         'image/webp',
     ];
 
+    /**
+     * Converts file size to a human-readable format (KB, MB, etc.)    Lines 101-162 newly added
+     */
+    public function getReadableFileSize()
+    {
+        $path = \Yii::getAlias('@app') . '/../' . \Yii::$app->setting->getValue('storage::path') . '/' . $this->name;
+        if (!file_exists($path)) {
+            return \portalium\storage\Module::t('Unknown size');
+        }
+
+        $bytes = filesize($path);
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        
+        return round($bytes, 2) . ' ' . $units[$pow];
+    }
+
+    /**
+     * Returns the appropriate FontAwesome icon class based on MIME type
+     */
+    public function getFileIconClass()
+    {
+        $mimeType = $this->mime_type;
+        if (is_numeric($mimeType)) {
+            $mimeType = array_search($mimeType, self::MIME_TYPE);
+        }
+
+        if (strpos($mimeType, 'application/pdf') === 0) {
+            return 'fa fa-file-pdf-o';
+        } elseif (strpos($mimeType, 'video/') === 0) {
+            return 'fa fa-file-video-o';
+        } elseif (strpos($mimeType, 'audio/') === 0) {
+            return 'fa fa-file-audio-o';
+        } elseif (strpos($mimeType, 'text/') === 0) {
+            return 'fa fa-file-text-o';
+        } elseif (strpos($mimeType, 'application/msword') === 0 || strpos($mimeType, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') === 0) {
+            return 'fa fa-file-word-o';
+        } elseif (strpos($mimeType, 'application/vnd.ms-excel') === 0 || strpos($mimeType, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') === 0) {
+            return 'fa fa-file-excel-o';
+        } elseif (strpos($mimeType, 'application/vnd.ms-powerpoint') === 0 || strpos($mimeType, 'application/vnd.openxmlformats-officedocument.presentationml.presentation') === 0) {
+            return 'fa fa-file-powerpoint-o';
+        } elseif (strpos($mimeType, 'application/zip') === 0 || strpos($mimeType, 'application/x-rar-compressed') === 0 || strpos($mimeType, 'application/x-tar') === 0 || strpos($mimeType, 'application/gzip') === 0) {
+            return 'fa fa-file-archive-o';
+        }
+
+        return 'fa fa-file-o';
+    }
+
+    /**
+     * Checks whether the file is an image
+     */
+    public function isImage()
+    {
+        $mimeType = $this->mime_type;
+        if (is_numeric($mimeType)) {
+            $mimeType = array_search($mimeType, self::MIME_TYPE);
+        }
+        return strpos($mimeType, 'image/') === 0;
+    }
+
     public function behaviors()
     {
         return [
@@ -573,16 +636,6 @@ class Storage extends \yii\db\ActiveRecord
                 return 'video/quicktime';
             case 'mkv':
                 return 'video/x-matroska';
-            case 'zip':
-                return 'application/zip';
-            case 'rar':
-                return 'application/x-rar-compressed';
-            case '7z':
-                return 'application/x-7z-compressed';
-            case 'tar':
-                return 'application/x-tar';
-            case 'gz':
-                return 'application/gzip';
             case 'txt':
                 return 'text/plain';
             case 'csv':
@@ -1209,4 +1262,3 @@ class Storage extends \yii\db\ActiveRecord
         return false;
     }
 }
-

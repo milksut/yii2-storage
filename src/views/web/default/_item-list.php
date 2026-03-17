@@ -21,7 +21,7 @@ $bundle = \portalium\storage\bundles\IconAsset::register($this);
 
 $id_directory = Yii::$app->request->get('id_directory');
 $parentDirectory = null;
-
+$token = Yii::$app->request->get('token');// YENİ EKLENDİ 
 
 $fileExtensions = Yii::$app->request->get('fileExtensions', []);
 
@@ -82,7 +82,11 @@ if ($id_directory !== null) {
     echo Html::beginTag('ol', ['class' => 'breadcrumb d-inline-flex mb-0']);
 
 
-    $homeUrlParams = ['index', 'isPicker' => $isPicker];
+    $homeUrlParams = ['index', 'isPicker' => $isPicker];//SİLINECEK
+    $homeUrlParams = [$actionId, 'isPicker' => $isPicker];//YENİ EKLENDİ
+     if ($token) {
+        $homeUrlParams['token'] = $token;
+    }//YENİ EKLENDİ
     if (!empty($fileExtensionsParam)) {
         $homeUrlParams['fileExtensions'] = $fileExtensionsParam;
     }
@@ -100,8 +104,8 @@ if ($id_directory !== null) {
         if ($i === count($pathItems) - 1) {
             echo Html::tag('li', Html::encode($item['name']), ['class' => 'breadcrumb-item active']);
         } else {
-
-            $breadcrumbUrlParams = ['index', 'id_directory' => $item['id'], 'isPicker' => $isPicker];
+            $breadcrumbUrlParams = [$actionId, 'id_directory' => $item['id'], 'isPicker' => $isPicker];//YENİ EKLENDİ
+            $breadcrumbUrlParams = ['index', 'id_directory' => $item['id'], 'isPicker' => $isPicker];//SİLİNECEK
             if (!empty($fileExtensionsParam)) {
                 $breadcrumbUrlParams['fileExtensions'] = $fileExtensionsParam;
             }
