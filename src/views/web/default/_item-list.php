@@ -1,6 +1,6 @@
 <?php
 
-use portalium\storage\models\StorageDirectory;
+use portalium\storage\models\Storage;
 use portalium\storage\Module;
 use portalium\theme\widgets\Html;
 use portalium\theme\widgets\Dropdown;
@@ -37,14 +37,14 @@ if (!is_array($fileExtensions)) {
 $fileExtensionsParam = !empty($fileExtensions) ? implode(',', $fileExtensions) : '';
 
 if ($id_directory !== null) {
-    $parentDirectory = StorageDirectory::findOne($id_directory);
+    $parentDirectory = Storage::findOne(['id_storage' => $id_directory, 'type' => Storage::TYPE_DIRECTORY]);
 }
 
 echo Html::beginTag('div', ['class' => 'container-fluid mt-3']);
 
 
 if ($id_directory !== null) {
-    $parentId = $parentDirectory && $parentDirectory->id_parent ? $parentDirectory->id_parent : null;
+    $parentId = $parentDirectory && $parentDirectory->id_directory ? $parentDirectory->id_directory : null;
     $backUrlParams = [$actionId, 'isPicker' => $isPicker];
     if ($parentId) {
         $backUrlParams['id_directory'] = $parentId;
@@ -68,14 +68,14 @@ if ($id_directory !== null) {
     while ($currentDir !== null) {
         array_unshift($pathItems, [
             'name' => $currentDir->name,
-            'id' => $currentDir->id_directory
+            'id' => $currentDir->id_storage
         ]);
 
-        if ($currentDir->id_parent === null) {
+        if ($currentDir->id_directory === null) {
             break;
         }
 
-        $currentDir = StorageDirectory::findOne($currentDir->id_parent);
+        $currentDir = Storage::findOne(['id_storage' => $currentDir->id_directory, 'type' => Storage::TYPE_DIRECTORY]);
     }
 
     echo Html::beginTag('nav', ['class' => 'ml-3 d-inline-block']);
@@ -142,8 +142,8 @@ echo Html::beginTag('div', ['class' => 'row g-3', 'id' => 'folder-list']);
 }
 
 foreach ($directories as $model) {
-    /** @var \portalium\storage\models\StorageDirectory $model */
-    $folderId = $model->id_directory;
+    /** @var \portalium\storage\models\Storage $model */
+    $folderId = $model->id_storage;
     $folderName = Html::encode($model->name);
 
     $content = Html::beginTag('div', [
@@ -164,15 +164,6 @@ foreach ($directories as $model) {
     ]);
 
     $content .= Html::tag('span', $folderName, ['class' => 'folder-name']);
-
-    $content .= Html::button(
-    Html::tag('i', '', ['class' => 'fa fa-ellipsis-v']),
-    [
-        'class' => 'more-options',
-        'onclick' => "toggleFolderMenu(event, $folderId)",
-        'data-title' => Module::t('More Options'),
-    ]
-    );
 
     // Check user's permissions for this folder
     $isOwner = ($model->id_user == Yii::$app->user->id);
@@ -240,14 +231,26 @@ foreach ($directories as $model) {
         ];
     }
 
-    $content .= Dropdown::widget([
-        'items' => $dropdownItems,
-        'options' => [
-            'class' => 'folder-dropdown-menu',
-            'id' => 'context-folder-menu-' . $folderId,
-        ],
-    ]);
+    if (!empty($dropdownItems)) {
 
+        $content .= Html::button(
+            Html::tag('i', '', ['class' => 'fa fa-ellipsis-v']),
+            [
+                'class' => 'more-options',
+                'onclick' => "toggleFolderMenu(event, $folderId)",
+                'data-title' => Module::t('More Options'),
+            ]
+        );
+
+        $content .= Dropdown::widget([
+            'items' => $dropdownItems,
+            'options' => [
+                'class' => 'folder-dropdown-menu',
+                'id' => 'context-folder-menu-' . $folderId,
+            ],
+        ]);
+    }
+    
     $content .= Html::endTag('div'); 
     $content .= Html::endTag('div'); 
     echo $content; 
@@ -260,7 +263,7 @@ echo Html::endTag('div'); // folders-section
 echo Html::beginTag('div', [
     'id' => 'bulk-action-toolbar',
     'class' => 'bulk-action-toolbar d-none',
-    'style' => 'background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: 15px; z-index: 999; margin-bottom: 20px;'
+    'style' => 'background: #f8f9fa; border-bottom: 1px solid #dee2e6; padding: 15px; margin-bottom: 20px;'
 ]);
 
 echo Html::beginTag('div', ['class' => 'd-flex align-items-center justify-content-between']);
@@ -358,8 +361,27 @@ $sortDirection = Yii::$app->request->get('sortDirection', 'desc');
 // Get selected file id in file picker
 $selectedFileId = Yii::$app->request->get('selectedFileId', null);
 
+// Determine whether the selected item is a directory or a file so we can
+// pin it to the top of the correct list.
+$selectedIsDirectory = false;
+if ($isPicker && $selectedFileId) {
+    $selectedModel = \portalium\storage\models\Storage::findOne($selectedFileId);
+    if ($selectedModel && $selectedModel->isDirectory()) {
+        $selectedIsDirectory = true;
+    }
+}
+
+// Pin selected directory to the top of the directory list
+if ($directoryDataProvider && $directoryDataProvider->query && $isPicker && $selectedFileId && $selectedIsDirectory) {
+    $directoryDataProvider->query->orderBy([
+        new \yii\db\Expression("CASE WHEN id_storage = :selectedId THEN 0 ELSE 1 END", [':selectedId' => $selectedFileId]),
+        'id_storage' => ($sortDirection === 'desc') ? SORT_DESC : SORT_ASC,
+    ]);
+}
+
 if ($fileDataProvider && $fileDataProvider->query) {
-    if ($isPicker && $selectedFileId) {
+    // Only pin to the top of the file list when the selected item is actually a file
+    if ($isPicker && $selectedFileId && !$selectedIsDirectory) {
         if ($sortField === 'name') {
             $fileDataProvider->query->orderBy([
                 new \yii\db\Expression("CASE WHEN id_storage = :selectedId THEN 0 ELSE 1 END", [':selectedId' => $selectedFileId]),
@@ -476,21 +498,6 @@ echo ListView::widget([
 
         $content .= Html::endTag('div'); // .file-info
 
-        $content .= Html::button(
-            Html::tag('i', '', [
-                'class' => 'fa fa-ellipsis-v',
-                'id' => 'menu-trigger-' . $model->id_storage,
-                'data-title' => $title,
-            ]),
-            [
-                'class' => 'file-more-options',
-                'onclick' => 'toggleContextMenu(event, ' . $model->id_storage . ')',
-                'data-title' => Module::t('More Options'),
-            ]
-        );
-
-        $content .= Html::endTag('div'); // .file-header
-
         // Check user's permissions for this file
         $isOwner = ($model->id_user == Yii::$app->user->id);
         $hasGlobalEditPerm = Yii::$app->user->can('storageWebDefaultRenameFile') || Yii::$app->workspace->can('storage', 'storageWebDefaultRenameFile', ['model' => $model]);
@@ -591,14 +598,28 @@ echo ListView::widget([
             ];
         }
         
-        // Dropdown menu
-        $content .= Dropdown::widget([
-            'items' => $fileDropdownItems,
-            'options' => [
-                'class' => 'custom-dropdown-menu',
-                'id' => 'context-menu-' . $model->id_storage,
-            ],
-        ]);
+        if (!empty($fileDropdownItems)) {
+            $content .= Html::button(
+                Html::tag('i', '', ['class' => 'fa fa-ellipsis-v',
+                    'id' => 'menu-trigger-' . $model->id_storage,
+                    'data-title' => $title,
+                ]),
+                [
+                    'class' => 'file-more-options',
+                    'onclick' => 'toggleContextMenu(event, ' . $model->id_storage . ')',
+                    'data-title' => Module::t('More Options'),
+                ]
+            );
+            $content .= Dropdown::widget([
+                'items' => $fileDropdownItems,
+                'options' => [
+                    'class' => 'custom-dropdown-menu',
+                    'id' => 'context-menu-' . $model->id_storage,
+                ],
+            ]);
+        }
+        
+        $content .= Html::endTag('div'); // .file-header
 
         // file preview
         $content .= Html::beginTag('div', ['class' => 'file-preview']);
