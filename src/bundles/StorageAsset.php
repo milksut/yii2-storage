@@ -15,6 +15,7 @@ class StorageAsset extends AssetBundle
     public $js = [
         'storage/js/storage.js',
         'storage/js/storageActions.js',
+        'storage/js/storage-share.js',
         'share-modal/js/share-modal.js',
     ];
     public $publishOptions = [
