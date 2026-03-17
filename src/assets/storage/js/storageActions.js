@@ -122,12 +122,13 @@ window.handleFileCardClick = function (event, id_storage) {
   if (window.isPicker) {
     event.preventDefault();
     event.stopPropagation();
-
+    
+    // Deselect any selected folder when a file is clicked
     if (window.allowFolderSelection) {
       $('.folder-item.active').removeClass('active');
       window.selectedDirectoryId = null;
     }
-
+    
     const fileCard = $('.file-card[data-id="' + id_storage + '"]');
     const checkbox = fileCard.find('.file-select-checkbox');
 
@@ -169,17 +170,19 @@ window.selectFile = function (checkbox, id_storage) {
   }
 };
 
-window.handleFolderCardClick = function (event, id_directory) {
+window.handleFolderCardClick = function(event, id_directory) {
   if (!window.allowFolderSelection || !window.isPicker) return;
-
+  
   event.preventDefault();
   event.stopPropagation();
 
+  // Deselect previously selected folder and file
   $('.folder-item.active').removeClass('active');
   $('.file-card.active').removeClass('active');
   $('.file-card input[type="checkbox"]').prop('checked', false);
   window.selectedIdStorage = null;
 
+  // Select clicked folder
   const folderEl = $('.folder-item[data-id="' + id_directory + '"]');
   folderEl.addClass('active');
   window.selectedDirectoryId = id_directory;
