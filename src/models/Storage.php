@@ -118,6 +118,47 @@ class Storage extends \yii\db\ActiveRecord
         return round($bytes, 2) . ' ' . $units[$pow];
     }
 
+    
+    /**
+     * Calculates the total size of the folder in bytes (including subfolders)
+    */
+    public function getDirectorySize()
+    {
+        if ($this->type !== self::TYPE_DIRECTORY) {
+            return 0;
+        }
+
+        $size = 0;
+        $children = self::find()->where(['id_directory' => $this->id_storage])->all();
+        
+        foreach ($children as $child) {
+            if ($child->type === self::TYPE_FILE) {
+                $path = \Yii::getAlias('@app') . '/../' . \Yii::$app->setting->getValue('storage::path') . '/' . $child->name;
+                if (file_exists($path)) {
+                    $size += filesize($path);
+                }
+            } else {
+                $size += $child->getDirectorySize();
+            }
+        }
+        return $size;
+    }
+
+    /**
+     * Converts folder size to a readable format.
+     */
+    public function getReadableDirectorySize()
+    {
+        $bytes = $this->getDirectorySize();
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        
+        return round($bytes, 2) . ' ' . $units[$pow];
+    }
+
     /**
      * Returns the appropriate FontAwesome icon class based on MIME type
      */

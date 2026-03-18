@@ -1263,7 +1263,7 @@ class DefaultController extends Controller
     /**
      * View a shared item via link.
      */
-    public function actionViewShare($id, $download = false)
+    public function actionViewShare($id, $download = false, $file_id = null)
     {
         $share = \portalium\storage\models\StorageShare::findOne($id);
 
@@ -1271,44 +1271,41 @@ class DefaultController extends Controller
             throw new NotFoundHttpException(Module::t('The requested share link is invalid or has expired.'));
         }
 
+        // --- PERMISSION CHECKS START ---
+        // Default: No access to sensitive actions
         $hasEditAccess = false;
         $hasManageAccess = false;
 
+        /**
+         * SECURITY FIX: 
+         * We only allow Edit and Manage actions if the user is logged into the system.
+         * Guest users should only be able to view and download, regardless of the link's permission level.
+         */
         if (!Yii::$app->user->isGuest) {
             if ($share->permission_level == \portalium\storage\models\StorageShare::PERMISSION_EDIT) {
                 $hasEditAccess = true;
             } elseif ($share->permission_level == \portalium\storage\models\StorageShare::PERMISSION_MANAGE) {
-                $hasEditAccess = true;
+                $hasEditAccess = true; // Users with Manage permission can also Edit.
                 $hasManageAccess = true;
             }
         }
+        // --- PERMISSION CHECKS END ---
 
+        // If it's a direct file share, serve the file or render preview
         if ($share->id_storage !== null) {
             $file = Storage::findOne($share->id_storage);
             if (!$file) {
                 throw new NotFoundHttpException(Module::t('The requested file does not exist.'));
             }
 
-            if ($download) {
-                $file->access_count = ($file->access_count ?? 0) + 1;
-                $file->date_last_access = date('Y-m-d H:i:s');
-                $file->save(false, ['access_count', 'date_last_access']);
-
-                $path = Yii::$app->basePath . '/../' . Yii::$app->setting->getValue('storage::path') . '/' . $file->name;
-                if (file_exists($path)) {
-                    $response = Yii::$app->response;
-                    $fileExtension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-
-                    if (in_array($file->mime_type, ['application/pdf', 'image/jpeg', 'image/png', 'image/gif'])) {
-                        $response->headers->set('Content-Disposition', 'inline; filename="' . $file->title . '.' . $fileExtension . '"');
-                    } else {
-                        $response->headers->set('Content-Disposition', 'attachment; filename="' . $file->title . '.' . $fileExtension . '"');
-                    }
-                    return $response->sendFile($path, $file->title . '.' . $fileExtension, ['inline' => true]);
-                }
-                throw new NotFoundHttpException(Module::t('File not found on disk.'));
+            if ($download || Yii::$app->request->get('type') === 'thumb') {
+                $file->access = Storage::ACCESS_PUBLIC; // bypass auth check for public share links
+                return \portalium\storage\helpers\StorageFileServer::serve($file, [
+                    'thumb' => Yii::$app->request->get('type') === 'thumb'
+                ]);
             }
 
+            // Render preview page with calculated permissions
             return $this->render('view-share', [
                 'model' => $file,
                 'share' => $share,
@@ -1317,9 +1314,72 @@ class DefaultController extends Controller
             ]);
         }
 
-        return $this->redirect(['/storage/default/index']);
+        if ($share->id_directory !== null) {
+            $directory = Storage::findOne(['id_storage' => $share->id_directory, 'type' => Storage::TYPE_DIRECTORY]);
+            if (!$directory) {
+                throw new NotFoundHttpException(Module::t('The requested folder does not exist.'));
+            }
+
+            // If a specific file or subfolder is requested from this shared folder
+            if ($file_id !== null) {
+                $item = Storage::findOne(['id_storage' => $file_id]);
+                if (!$item) {
+                    throw new NotFoundHttpException(Module::t('The requested item does not exist.'));
+                }
+
+                $isInSharedFolder = false;
+                $currentDirId = $item->id_directory;
+                while($currentDirId) {
+                    if ($currentDirId == $directory->id_storage) {
+                        $isInSharedFolder = true;
+                        break;
+                    }
+                    $parent = Storage::findOne($currentDirId);
+                    $currentDirId = $parent ? $parent->id_directory : null;
+                }
+
+                if (!$isInSharedFolder && $item->id_storage != $directory->id_storage) {
+                    throw new \yii\web\ForbiddenHttpException(Module::t('You do not have permission to access this item.'));
+                }
+
+                if ($item->type === Storage::TYPE_FILE) {
+                    $item->access = Storage::ACCESS_PUBLIC; // Bypass auth check since share is valid
+                    return \portalium\storage\helpers\StorageFileServer::serve($item, [
+                        'thumb' => Yii::$app->request->get('type') === 'thumb'
+                    ]);
+                } else {
+                    // Item is a sub-directory, overwrite $directory to render its contents
+                    $directory = $item;
+                }
+            }
+
+            $searchModel = new \portalium\storage\models\StorageSearch();
+        
+        $fileDataProvider = $searchModel->search(Yii::$app->request->queryParams);
+        $fileDataProvider->query->andWhere(['id_directory' => $directory->id_storage]);
+        
+        $directoryDataProvider = new \portalium\data\ActiveDataProvider([
+            'query' => Storage::find()
+                ->where(['type' => Storage::TYPE_DIRECTORY])
+                ->andWhere(['id_directory' => $directory->id_storage])
+                ->orderBy(['id_storage' => SORT_DESC]),
+            'pagination' => [
+                'pageSize' => 24,
+            ],
+        ]);
+
+        return $this->render('view-share-folder', [
+            'model' => $directory,
+            'fileDataProvider' => $fileDataProvider,
+            'directoryDataProvider' => $directoryDataProvider,
+            'share' => $share,
+            'hasEditAccess' => $hasEditAccess,
+            'hasManageAccess' => $hasManageAccess,
+        ]);
     }
 
+    return $this->redirect(['/storage/default/index']);
+}
     /**
      * Get all shares for a file, directory, or user storage.
      */
