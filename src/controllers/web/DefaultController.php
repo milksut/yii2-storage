@@ -539,7 +539,7 @@ class DefaultController extends Controller
 
         $model = \portalium\storage\models\Storage::findOne($id);
         if (!$model) {
-            return ['success' => false, 'message' => 'Dosya bulunamadı'];
+            return ['success' => false, 'message' => 'File not found'];
         }
 
         if (
@@ -547,15 +547,15 @@ class DefaultController extends Controller
             !\Yii::$app->user->can('storageWebDefaultShareFileOwn', ["model" => $model]) &&
             !\Yii::$app->workspace->can('storage', 'storageWebDefaultShareFile', ['model' => $model])
         ) {
-            return ['success' => false, 'message' => 'Yetkiniz yok'];
+            return ['success' => false, 'message' => 'You do not have permission'];
         }
 
         $model->access = ($access === 'public') ? $model::ACCESS_PUBLIC : $model::ACCESS_PRIVATE;
 
         if ($model->save(false)) {
-            return ['success' => true, 'message' => 'Erişim seviyesi güncellendi'];
+            return ['success' => true, 'message' => 'Access level updated'];
         } else {
-            return ['success' => false, 'message' => 'Kaydedilirken hata oluştu'];
+            return ['success' => false, 'message' => 'Error occurred while saving'];
         }
     }
 
@@ -669,7 +669,7 @@ class DefaultController extends Controller
     Yii::$app->response->format = \yii\web\Response::FORMAT_JSON;
 
     if (!Yii::$app->request->isPost) {
-        return ['success' => false, 'message' => 'Sadece POST istekleri kabul edilir.'];
+        return ['success' => false, 'message' => 'Only POST requests are accepted.'];
     }
 
     $id = Yii::$app->request->post('id');
@@ -677,10 +677,10 @@ class DefaultController extends Controller
 
     $sourceModel = Storage::findOne($id);
     if (!$sourceModel) {
-        return ['success' => false, 'message' => 'Kaynak dosya bulunamadı.'];
+        return ['success' => false, 'message' => 'Source file not found.'];
     }
 
-    // Yetki Kontrolü
+    // Permission Check
     $hasSharePermission = false;
     if ($id_share) {
         $share = \portalium\storage\models\StorageShare::findOne($id_share);
@@ -690,18 +690,18 @@ class DefaultController extends Controller
     }
 
     if (!Yii::$app->user->can('storageWebDefaultCopyFile') && !$hasSharePermission) {
-        return ['success' => false, 'message' => 'Yetkiniz yok!'];
+        return ['success' => false, 'message' => 'You do not have permission'];
     }
 
-    // Kopyalama Mantığı
+    // Copying Logic
     $path = Yii::getAlias('@app') . '/../' . Yii::$app->setting->getValue('storage::path');
 
     if ($sourceModel->isDirectory()) {
-        // Klasör kopyalama (recursive)
+        // Folder copying (recursive)
         $result = $this->copyFolderRecursive($sourceModel, Yii::$app->user->id, $sourceModel->id_directory, $path, true);
         return $result;
     } else {
-        // Dosya kopyalama
+        // File copying
         $newModel = new Storage();
         $newModel->attributes = $sourceModel->attributes;
         $newModel->id_storage = null;
@@ -719,7 +719,7 @@ class DefaultController extends Controller
             }
         }
 
-        return ['success' => false, 'message' => 'Kopyalama başarısız oldu.'];
+        return ['success' => false, 'message' => 'File copy failed.'];
     }
 }
 
@@ -1183,8 +1183,7 @@ class DefaultController extends Controller
 
         if (!$hasGlobalPermission && !$hasSharePermission) {
             throw new \yii\web\ForbiddenHttpException(Module::t('You are not allowed to access this page.'));
-        }//1124-1142 yeni eklendi
-
+        }
         if (!$model) {
             Yii::$app->session->setFlash('error', Module::t('Folder not found!'));
             return '';

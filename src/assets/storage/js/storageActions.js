@@ -98,7 +98,7 @@ function returnToMainPage() {
       replace: false,
       timeout: 10000,
       complete: function () {
-        console.log("Ana sayfaya döndü, pagination restore edildi");
+        console.log("Returned to homepage, pagination restored.");
       },
     })
     .done(function () {
@@ -336,7 +336,7 @@ function uploadFileMenu(event) {
           },
           error: function (xhr) {
             newDropdownBtn.removeClass("btn-loading");
-            console.error("Yükleme hatası:", xhr);
+            console.error("Loading error:", xhr);
           },
         });
       });
@@ -415,7 +415,7 @@ function uploadFolderMenu(event) {
         },
         error: function (xhr) {
           newDropdownBtn.removeClass("btn-loading");
-          console.error("Yükleme hatası:", xhr);
+          console.error("Loading error:", xhr);
         },
       });
     }
@@ -811,10 +811,10 @@ function bindSearchInput() {
 
       window.searchTimer = setTimeout(function () {
         if (q === "") {
-          console.log("Arama kutusu boş, ana sayfaya dönülüyor...");
+          console.log("Search box is empty, returning to homepage...");
           returnToMainPage();
         } else {
-          console.log("Arama yapılıyor:", q);
+          console.log("Performing search:", q);
           performSearch(q);
         }
       }, 500);
@@ -934,9 +934,8 @@ $(document).on("pjax:end", function () {
   }
 });
 
-
 // ==============================================================================
-// PAYLAŞIM (SHARE) MANTIĞINA AİT FONKSİYONLAR - 4 BUTON İÇİN BİRLEŞTİRİLDİ
+// SHARE FUNCTIONS - COMBINED FOR 4 BUTTONS
 // ==============================================================================
 
 function openRenameModal(id) {
@@ -1075,15 +1074,15 @@ function copyFile(id) {
     headers: { "X-CSRF-Token": $('meta[name="csrf-token"]').attr("content") },
     success: function (response) {
       if (response.success) {
-        // Başarılıysa yönlendir veya yenile
-        alert("Dosya başarıyla kopyalandı.");
+        // Redirect or refresh if successful
+        alert("File successfully copied.");
         if (shareId) {
           location.reload();
         } else {
           $.pjax.reload({ container: '#list-item-pjax' });
         }
       } else {
-        alert("Hata: " + response.message);
+        alert("Error: " + response.message);
       }
     }
   });
@@ -1110,7 +1109,7 @@ function deleteFile(id) {
       }
     },
     error: function () {
-      alert("Dosya silinemedi! Bu dosyayı silmek için 'Manage' yetkisine sahip olmalısınız.");
+      alert("File could not be deleted! You must have 'Manage' permissions to delete this file.");
     }
   });
 }
@@ -1156,7 +1155,7 @@ function openShareStorageModal(event) {
   }, 500);
 }
 
-// Güvenlik Filtresi (Sadece ShareModal'ın JSON verilerini bozmamak için güncellendi)
+// Security Filter (Updated only to prevent ShareModal's JSON data from being corrupted)
 $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
   var shareId = $('#current-share-id').val();
   var storageId = $('#current-storage-id').val();
@@ -1172,7 +1171,7 @@ $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
           jsonData.id_share = shareId;
           if (storageId) jsonData.id_storage = storageId;
           options.data = JSON.stringify(jsonData);
-        } catch (e) { console.error('JSON Parse Hatası:', e); }
+        } catch (e) { console.error('JSON Parse Error:', e); }
       } else {
         if (options.data.indexOf('id_share=') === -1) options.data += '&id_share=' + shareId;
         if (storageId && options.data.indexOf('id_storage=') === -1) options.data += '&id_storage=' + storageId;
@@ -1181,7 +1180,7 @@ $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
   }
 });
 
-// Window nesnesine atamalar
+// Assignments to the Window object
 window.openRenameModal = openRenameModal;
 window.openUpdateModal = openUpdateModal;
 window.openShareModal = openShareModal;

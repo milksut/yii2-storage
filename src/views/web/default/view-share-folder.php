@@ -191,7 +191,7 @@ if ($hasManageAccess) {
                             'mime_type' => $itemModel->mime_type,
                             'icon_class_php' => $itemModel->getIconClass(),
                         ]),
-                        // Dosyaya çift tıklandığında önizleme açılsın diye (StorageAsset içindeki kodları tetikler)
+                        // This triggers the code within StorageAsset so that a preview opens when the file is double-clicked.
                         'ondblclick' => "if (typeof handleFileCardClick === 'function') handleFileCardClick.call(this, event, " . $itemModel->id_storage . ")",
                     ]);
 
