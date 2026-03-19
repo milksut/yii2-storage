@@ -44,8 +44,13 @@ function setViewMode(mode) {
     applyViewModeClasses(mode);
 }
 
+<<<<<<< develop-v3-yakup
 window.openFilePreview = function (url, attributesRaw) {
     if (!url) return console.warn('data-url bulunamadı');
+=======
+window.openFilePreview = function(url, attributesRaw) {
+    if (!url) return console.warn('data-url not found');
+>>>>>>> develop-v3
 
     var attributes = {};
     if (attributesRaw) {
@@ -56,11 +61,16 @@ window.openFilePreview = function (url, attributesRaw) {
                 attributes = attributesRaw;
             }
         }
-        catch (err) { console.warn('data-attributes parse edilemedi', err); }
+        catch (err) { console.warn('data-attributes could not be parsed.', err); }
     }
 
+<<<<<<< develop-v3-yakup
     var title = attributes.title || 'Başlık yok';
     var iconClass = attributes.icon_class_php || 'fa fa-file';
+=======
+    var title = attributes.title || 'No Title';
+    var iconClass = attributes.icon_class_php || 'fa fa-file'; 
+>>>>>>> develop-v3
     var mime_type = attributes.mime_type;
     var fileId = attributes.id_storage;
     var shareToken = attributes.share_token;
@@ -94,9 +104,9 @@ window.openFilePreview = function (url, attributesRaw) {
 
     var loadingContent = '<div class="loading-spinner show text-center">';
     loadingContent += '<div class="spinner-border" role="status">';
-    loadingContent += '<span class="sr-only">Yükleniyor...</span>';
+    loadingContent += '<span class="sr-only">Loading...</span>';
     loadingContent += '</div>';
-    loadingContent += '<p class="mt-2">Dosya yükleniyor...</p>';
+    loadingContent += '<p class="mt-2">File loading...</p>';
     loadingContent += '</div>';
     $('#filePreviewContent').html(loadingContent);
 
@@ -124,16 +134,16 @@ window.openFilePreview = function (url, attributesRaw) {
         content += 'class="file-icon img-fluid" ';
         content += 'style="max-width:100%;max-height:70vh;" ';
         content += 'onload="$(\'#filePreviewContent .loading-spinner\').removeClass(\'show\')" ';
-        content += 'onerror="handlePreviewError(\'Resim yüklenirken hata oluştu.\')"/>';
+        content += 'onerror="handlePreviewError(\'Failed to load image.\')"/>';
         content += '</div>';
 
     } else if ([9, 11, 12, 13].includes(parseInt(mime_type))) {
         content = '<div class="file-preview text-center">';
         content += '<video controls autoplay style="max-width:100%;max-height:70vh;" ';
         content += 'oncanplay="$(\'#filePreviewContent .loading-spinner\').removeClass(\'show\')" ';
-        content += 'onerror="handlePreviewError(\'Video yüklenirken hata oluştu.\')">';
+        content += 'onerror="handlePreviewError(\'Failed to load video.\')">';
         content += '<source src="' + url + '" type="video/mp4">';
-        content += 'Tarayıcınız video etiketini desteklemiyor.';
+        content += 'Your browser does not support the video tag.';
         content += '</video>';
         content += '</div>';
 
@@ -141,10 +151,10 @@ window.openFilePreview = function (url, attributesRaw) {
         content = '<div class="file-preview text-center">';
         content += '<div class="alert alert-info">';
         content += '<i class="fa fa-info-circle fa-3x mb-3"></i>';
-        content += '<h5>Önizleme Desteklenmiyor</h5>';
-        content += '<p>Bu dosya tipi için önizleme mevcut değil.</p>';
+        content += '<h5>Preview Not Supported</h5>';
+        content += '<p>Preview is not available for this file type.</p>';
         content += '<a href="' + url + '" target="_blank" class="btn btn-primary">';
-        content += '<i class="fa fa-download me-1"></i>Dosyayı İndir';
+        content += '<i class="fa fa-download me-1"></i>Download File';
         content += '</a>';
         content += '</div>';
         content += '</div>';
@@ -161,7 +171,7 @@ window.openFilePreview = function (url, attributesRaw) {
 
 function handleMultipleFilePreview(files) {
     if (!files || files.length === 0) {
-        return console.warn('Önizlenecek dosya bulunamadı.');
+        return console.warn('No files were found to preview...');
     }
 
     var firstFile = files[0];

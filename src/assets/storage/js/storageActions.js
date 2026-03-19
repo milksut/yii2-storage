@@ -98,7 +98,7 @@ function returnToMainPage() {
       replace: false,
       timeout: 10000,
       complete: function () {
-        console.log("Returned to main page, pagination restored");
+        console.log("Returned to homepage, pagination restored.");
       },
     })
     .done(function () {
@@ -122,13 +122,12 @@ window.handleFileCardClick = function (event, id_storage) {
   if (window.isPicker) {
     event.preventDefault();
     event.stopPropagation();
-    
-    // Deselect any selected folder when a file is clicked
+
     if (window.allowFolderSelection) {
       $('.folder-item.active').removeClass('active');
       window.selectedDirectoryId = null;
     }
-    
+
     const fileCard = $('.file-card[data-id="' + id_storage + '"]');
     const checkbox = fileCard.find('.file-select-checkbox');
 
@@ -170,19 +169,17 @@ window.selectFile = function (checkbox, id_storage) {
   }
 };
 
-window.handleFolderCardClick = function(event, id_directory) {
+window.handleFolderCardClick = function (event, id_directory) {
   if (!window.allowFolderSelection || !window.isPicker) return;
-  
+
   event.preventDefault();
   event.stopPropagation();
 
-  // Deselect previously selected folder and file
   $('.folder-item.active').removeClass('active');
   $('.file-card.active').removeClass('active');
   $('.file-card input[type="checkbox"]').prop('checked', false);
   window.selectedIdStorage = null;
 
-  // Select clicked folder
   const folderEl = $('.folder-item[data-id="' + id_directory + '"]');
   folderEl.addClass('active');
   window.selectedDirectoryId = id_directory;
@@ -339,7 +336,7 @@ function uploadFileMenu(event) {
           },
           error: function (xhr) {
             newDropdownBtn.removeClass("btn-loading");
-            console.error("Upload error:", xhr);
+            console.error("Loading error:", xhr);
           },
         });
       });
@@ -418,7 +415,7 @@ function uploadFolderMenu(event) {
         },
         error: function (xhr) {
           newDropdownBtn.removeClass("btn-loading");
-          console.error("Upload error:", xhr);
+          console.error("Loading error:", xhr);
         },
       });
     }
@@ -524,6 +521,7 @@ $(document)
 
 function openRenameFolderModal(id) {
   if (event) event.preventDefault();
+  var shareId = $('#current-share-id').length ? $('#current-share-id').val() : null;
   let url = "/storage/default/rename-folder?id=" + id;
   if (window.currentDirectoryId) {
     url += "&id_directory=" + window.currentDirectoryId;
@@ -533,6 +531,10 @@ function openRenameFolderModal(id) {
 
   if (window.currentIsPicker) {
     url += "&isPicker=1";
+  }
+  
+  if (shareId) {
+    url += "&id_share=" + shareId;
   }
 
   $.ajax({
@@ -599,6 +601,12 @@ $(document).on("click", "#renameFolderButton", function (e) {
 
 function deleteFolder(id) {
   if (event) event.preventDefault();
+  var shareId = $('#current-share-id').length ? $('#current-share-id').val() : null;
+
+  var postData = window.currentIsPicker ? { isPicker: "1" } : {};
+  if (shareId) {
+    postData.id_share = shareId;
+  }
 
   $.ajax({
     url:
@@ -607,13 +615,17 @@ function deleteFolder(id) {
       "&id=" +
       id,
     type: "POST",
-    data: window.currentIsPicker ? { isPicker: "1" } : {},
+    data: postData,
     headers: {
       "X-CSRF-Token": $('meta[name="csrf-token"]').attr("content"),
     },
     dataType: "json",
     complete: function () {
-      refreshCurrentView();
+      if (shareId) {
+        location.reload();
+      } else {
+        refreshCurrentView();
+      }
     },
   });
 }
@@ -799,10 +811,10 @@ function bindSearchInput() {
 
       window.searchTimer = setTimeout(function () {
         if (q === "") {
-          console.log("Search box is empty, returning to main page...");
+          console.log("Search box is empty, returning to homepage...");
           returnToMainPage();
         } else {
-          console.log("Searching:", q);
+          console.log("Performing search:", q);
           performSearch(q);
         }
       }, 500);
@@ -922,9 +934,8 @@ $(document).on("pjax:end", function () {
   }
 });
 
-
 // ==============================================================================
-// FUNCTIONS RELATED TO SHARE LOGIC - COMBINED FOR 4 BUTTONS
+// SHARE FUNCTIONS - COMBINED FOR 4 BUTTONS
 // ==============================================================================
 
 function openRenameModal(id) {
@@ -1063,8 +1074,8 @@ function copyFile(id) {
     headers: { "X-CSRF-Token": $('meta[name="csrf-token"]').attr("content") },
     success: function (response) {
       if (response.success) {
-        // On success: redirect or reload
-        alert("File copied successfully.");
+        // Redirect or refresh if successful
+        alert("File successfully copied.");
         if (shareId) {
           location.reload();
         } else {
@@ -1076,7 +1087,6 @@ function copyFile(id) {
     }
   });
 }
-
 function deleteFile(id) {
   var shareId = $('#current-share-id').val();
   $.ajax({
@@ -1099,17 +1109,19 @@ function deleteFile(id) {
       }
     },
     error: function () {
-      alert("File could not be deleted! You must have 'Manage' permission to delete this file.");
+      alert("File could not be deleted! You must have 'Manage' permissions to delete this file.");
     }
   });
 }
 
 function openShareFolderModal(id) {
   if (event) event.preventDefault();
+  var shareId = $('#current-share-id').length ? $('#current-share-id').val() : null;
   setTimeout(function () {
     let url = "/storage/default/share-directory?id=" + id;
     if (window.currentDirectoryId) { url += "&id_directory=" + window.currentDirectoryId; } else { url += "&id_directory=null"; }
     if (window.currentIsPicker) { url += "&isPicker=1"; }
+    if (shareId) { url += "&id_share=" + shareId; }
 
     $.ajax({
       url: url,
@@ -1143,7 +1155,7 @@ function openShareStorageModal(event) {
   }, 500);
 }
 
-// Security Filter (Updated only to avoid breaking ShareModal JSON data)
+// Security Filter (Updated only to prevent ShareModal's JSON data from being corrupted)
 $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
   var shareId = $('#current-share-id').val();
   var storageId = $('#current-storage-id').val();
@@ -1168,7 +1180,7 @@ $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
   }
 });
 
-// Window object assignments
+// Assignments to the Window object
 window.openRenameModal = openRenameModal;
 window.openUpdateModal = openUpdateModal;
 window.openShareModal = openShareModal;
