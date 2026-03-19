@@ -98,7 +98,7 @@ function returnToMainPage() {
       replace: false,
       timeout: 10000,
       complete: function () {
-        console.log("Returned to main page, pagination restored");
+        console.log("Ana sayfaya döndü, pagination restore edildi");
       },
     })
     .done(function () {
@@ -122,13 +122,12 @@ window.handleFileCardClick = function (event, id_storage) {
   if (window.isPicker) {
     event.preventDefault();
     event.stopPropagation();
-    
-    // Deselect any selected folder when a file is clicked
+
     if (window.allowFolderSelection) {
       $('.folder-item.active').removeClass('active');
       window.selectedDirectoryId = null;
     }
-    
+
     const fileCard = $('.file-card[data-id="' + id_storage + '"]');
     const checkbox = fileCard.find('.file-select-checkbox');
 
@@ -170,19 +169,17 @@ window.selectFile = function (checkbox, id_storage) {
   }
 };
 
-window.handleFolderCardClick = function(event, id_directory) {
+window.handleFolderCardClick = function (event, id_directory) {
   if (!window.allowFolderSelection || !window.isPicker) return;
-  
+
   event.preventDefault();
   event.stopPropagation();
 
-  // Deselect previously selected folder and file
   $('.folder-item.active').removeClass('active');
   $('.file-card.active').removeClass('active');
   $('.file-card input[type="checkbox"]').prop('checked', false);
   window.selectedIdStorage = null;
 
-  // Select clicked folder
   const folderEl = $('.folder-item[data-id="' + id_directory + '"]');
   folderEl.addClass('active');
   window.selectedDirectoryId = id_directory;
@@ -339,7 +336,7 @@ function uploadFileMenu(event) {
           },
           error: function (xhr) {
             newDropdownBtn.removeClass("btn-loading");
-            console.error("Upload error:", xhr);
+            console.error("Yükleme hatası:", xhr);
           },
         });
       });
@@ -418,7 +415,7 @@ function uploadFolderMenu(event) {
         },
         error: function (xhr) {
           newDropdownBtn.removeClass("btn-loading");
-          console.error("Upload error:", xhr);
+          console.error("Yükleme hatası:", xhr);
         },
       });
     }
@@ -524,6 +521,7 @@ $(document)
 
 function openRenameFolderModal(id) {
   if (event) event.preventDefault();
+  var shareId = $('#current-share-id').length ? $('#current-share-id').val() : null;
   let url = "/storage/default/rename-folder?id=" + id;
   if (window.currentDirectoryId) {
     url += "&id_directory=" + window.currentDirectoryId;
@@ -533,6 +531,10 @@ function openRenameFolderModal(id) {
 
   if (window.currentIsPicker) {
     url += "&isPicker=1";
+  }
+  
+  if (shareId) {
+    url += "&id_share=" + shareId;
   }
 
   $.ajax({
@@ -599,6 +601,12 @@ $(document).on("click", "#renameFolderButton", function (e) {
 
 function deleteFolder(id) {
   if (event) event.preventDefault();
+  var shareId = $('#current-share-id').length ? $('#current-share-id').val() : null;
+
+  var postData = window.currentIsPicker ? { isPicker: "1" } : {};
+  if (shareId) {
+    postData.id_share = shareId;
+  }
 
   $.ajax({
     url:
@@ -607,13 +615,17 @@ function deleteFolder(id) {
       "&id=" +
       id,
     type: "POST",
-    data: window.currentIsPicker ? { isPicker: "1" } : {},
+    data: postData,
     headers: {
       "X-CSRF-Token": $('meta[name="csrf-token"]').attr("content"),
     },
     dataType: "json",
     complete: function () {
-      refreshCurrentView();
+      if (shareId) {
+        location.reload();
+      } else {
+        refreshCurrentView();
+      }
     },
   });
 }
@@ -799,10 +811,10 @@ function bindSearchInput() {
 
       window.searchTimer = setTimeout(function () {
         if (q === "") {
-          console.log("Search box is empty, returning to main page...");
+          console.log("Arama kutusu boş, ana sayfaya dönülüyor...");
           returnToMainPage();
         } else {
-          console.log("Searching:", q);
+          console.log("Arama yapılıyor:", q);
           performSearch(q);
         }
       }, 500);
@@ -924,7 +936,7 @@ $(document).on("pjax:end", function () {
 
 
 // ==============================================================================
-// FUNCTIONS RELATED TO SHARE LOGIC - COMBINED FOR 4 BUTTONS
+// PAYLAŞIM (SHARE) MANTIĞINA AİT FONKSİYONLAR - 4 BUTON İÇİN BİRLEŞTİRİLDİ
 // ==============================================================================
 
 function openRenameModal(id) {
@@ -1063,20 +1075,19 @@ function copyFile(id) {
     headers: { "X-CSRF-Token": $('meta[name="csrf-token"]').attr("content") },
     success: function (response) {
       if (response.success) {
-        // On success: redirect or reload
-        alert("File copied successfully.");
+        // Başarılıysa yönlendir veya yenile
+        alert("Dosya başarıyla kopyalandı.");
         if (shareId) {
           location.reload();
         } else {
           $.pjax.reload({ container: '#list-item-pjax' });
         }
       } else {
-        alert("Error: " + response.message);
+        alert("Hata: " + response.message);
       }
     }
   });
 }
-
 function deleteFile(id) {
   var shareId = $('#current-share-id').val();
   $.ajax({
@@ -1099,17 +1110,19 @@ function deleteFile(id) {
       }
     },
     error: function () {
-      alert("File could not be deleted! You must have 'Manage' permission to delete this file.");
+      alert("Dosya silinemedi! Bu dosyayı silmek için 'Manage' yetkisine sahip olmalısınız.");
     }
   });
 }
 
 function openShareFolderModal(id) {
   if (event) event.preventDefault();
+  var shareId = $('#current-share-id').length ? $('#current-share-id').val() : null;
   setTimeout(function () {
     let url = "/storage/default/share-directory?id=" + id;
     if (window.currentDirectoryId) { url += "&id_directory=" + window.currentDirectoryId; } else { url += "&id_directory=null"; }
     if (window.currentIsPicker) { url += "&isPicker=1"; }
+    if (shareId) { url += "&id_share=" + shareId; }
 
     $.ajax({
       url: url,
@@ -1143,7 +1156,7 @@ function openShareStorageModal(event) {
   }, 500);
 }
 
-// Security Filter (Updated only to avoid breaking ShareModal JSON data)
+// Güvenlik Filtresi (Sadece ShareModal'ın JSON verilerini bozmamak için güncellendi)
 $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
   var shareId = $('#current-share-id').val();
   var storageId = $('#current-storage-id').val();
@@ -1159,7 +1172,7 @@ $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
           jsonData.id_share = shareId;
           if (storageId) jsonData.id_storage = storageId;
           options.data = JSON.stringify(jsonData);
-        } catch (e) { console.error('JSON Parse Error:', e); }
+        } catch (e) { console.error('JSON Parse Hatası:', e); }
       } else {
         if (options.data.indexOf('id_share=') === -1) options.data += '&id_share=' + shareId;
         if (storageId && options.data.indexOf('id_storage=') === -1) options.data += '&id_storage=' + storageId;
@@ -1168,7 +1181,7 @@ $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
   }
 });
 
-// Window object assignments
+// Window nesnesine atamalar
 window.openRenameModal = openRenameModal;
 window.openUpdateModal = openUpdateModal;
 window.openShareModal = openShareModal;

@@ -99,7 +99,7 @@ class Storage extends \yii\db\ActiveRecord
     ];
 
     /**
-     * Converts file size to a human-readable format (KB, MB, etc.)    Lines 101-162 newly added
+     * Converts file size to a readable format (KB, MB, etc.)  
      */
     public function getReadableFileSize()
     {
@@ -118,10 +118,9 @@ class Storage extends \yii\db\ActiveRecord
         return round($bytes, 2) . ' ' . $units[$pow];
     }
 
-    
     /**
-     * Calculates the total size of the folder in bytes (including subfolders)
-    */
+     * Calculates the total size of the directory in bytes (including subdirectories)
+     */
     public function getDirectorySize()
     {
         if ($this->type !== self::TYPE_DIRECTORY) {
@@ -145,7 +144,7 @@ class Storage extends \yii\db\ActiveRecord
     }
 
     /**
-     * Converts folder size to a readable format.
+     * Converts directory size to a readable format
      */
     public function getReadableDirectorySize()
     {
@@ -160,7 +159,7 @@ class Storage extends \yii\db\ActiveRecord
     }
 
     /**
-     * Returns the appropriate FontAwesome icon class based on MIME type
+     * Returns the appropriate FontAwesome icon class based on the mime type
      */
     public function getFileIconClass()
     {
@@ -191,7 +190,7 @@ class Storage extends \yii\db\ActiveRecord
     }
 
     /**
-     * Checks whether the file is an image
+     * Checks if the file is an image
      */
     public function isImage()
     {
@@ -244,16 +243,6 @@ class Storage extends \yii\db\ActiveRecord
                     return $this->getOldAttribute('id_directory');
                 },
             ],
-            [
-                'class' => \yii\behaviors\AttributeBehavior::className(),
-                'attributes' => [
-                    \yii\db\ActiveRecord::EVENT_BEFORE_VALIDATE => 'title',
-                ],
-                'value' => function ($event) {
-                    return $this->type === self::TYPE_DIRECTORY ? $this->name : $this->title;
-                },
-            ],
-            
         ];
     }
 
@@ -677,6 +666,16 @@ class Storage extends \yii\db\ActiveRecord
                 return 'video/quicktime';
             case 'mkv':
                 return 'video/x-matroska';
+            case 'zip':
+                return 'application/zip';
+            case 'rar':
+                return 'application/x-rar-compressed';
+            case '7z':
+                return 'application/x-7z-compressed';
+            case 'tar':
+                return 'application/x-tar';
+            case 'gz':
+                return 'application/gzip';
             case 'txt':
                 return 'text/plain';
             case 'csv':
@@ -1303,3 +1302,4 @@ class Storage extends \yii\db\ActiveRecord
         return false;
     }
 }
+
