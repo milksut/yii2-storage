@@ -191,7 +191,7 @@ if ($hasManageAccess) {
                             'mime_type' => $itemModel->mime_type,
                             'icon_class_php' => $itemModel->getIconClass(),
                         ]),
-                        // Dosyaya çift tıklandığında önizleme açılsın diye (StorageAsset içindeki kodları tetikler)
+                        // This triggers the code within StorageAsset so that a preview opens when the file is double-clicked.
                         'ondblclick' => "if (typeof handleFileCardClick === 'function') handleFileCardClick.call(this, event, " . $itemModel->id_storage . ")",
                     ]);
 
@@ -317,4 +317,39 @@ if ($hasManageAccess) {
     <?php Panel::end(); ?>
     <?= $this->render('_filePreviewModal'); ?>
 </div>
-</div>
+<?php
+use portalium\widgets\Pjax;
+
+Pjax::begin(['id' => 'rename-file-pjax', 'history' => false, 'timeout' => false, 'enablePushState' => false]); Pjax::end();
+Pjax::begin(['id' => 'update-file-pjax', 'history' => false, 'timeout' => false, 'enablePushState' => false]); Pjax::end();
+Pjax::begin(['id' => 'share-file-pjax', 'history' => false, 'timeout' => false, 'enablePushState' => false]); Pjax::end();
+?>
+
+<?= Html::beginTag('div', ['class' => 'modal fade', 'id' => 'shareModal', 'tabindex' => '-1', 'aria-hidden' => 'true']) ?>
+    <?= Html::beginTag('div', ['class' => 'modal-dialog modal-lg']) ?>
+        <?= Html::tag('div', '', ['class' => 'modal-content']) ?>
+    <?= Html::endTag('div') ?>
+<?= Html::endTag('div') ?>
+
+<?= Html::hiddenInput('current-share-id', $share->id_share, ['id' => 'current-share-id']) ?>
+<?= Html::hiddenInput('current-storage-id', $model->id_storage, ['id' => 'current-storage-id']) ?>
+
+<?php
+Pjax::begin([
+    'id' => 'list-item-pjax',
+    'history' => false,
+    'timeout' => false,
+    'enablePushState' => false
+]);
+Pjax::end();
+?>
+
+<?php $this->registerJs("
+    $.ajaxSetup({
+        data: {
+            '" . Yii::$app->request->csrfParam . "': '" . Yii::$app->request->getCsrfToken() . "'
+        }
+    });
+"); ?>
+
+<?= Html::tag('div', '', ['id' => 'toast-container', 'class' => 'toast-container position-fixed top-0 end-0 p-3']) ?>

@@ -189,4 +189,10 @@ return [
     'No full storage shares yet.' => 'Henüz tüm depolama paylaşımı yok.',
     'File' => 'Dosya',
     'Folder' => 'Klasör',
+    'Folder/File cannot be reached.' => 'Klasöre/Dosyaya ulaşılmamaktadır.',
+    'Folder has been deleted.' => 'Klasör silinmiştir.',
+    'File has been deleted.' => 'Dosya silinmiştir.',
+    'File cannot be reached.' => 'Dosyaya ulaşılmamaktadır.',
+    'Folder cannot be reached.' => 'Klasöre ulaşılmamaktadır.',
+    'Folder/File cannot be reached.' => 'Klasöre/Dosyaya ulaşılmamaktadır.',
 ];
