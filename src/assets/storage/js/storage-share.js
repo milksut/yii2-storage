@@ -22,10 +22,10 @@ function applyViewModeClasses(mode) {
     if (gridBtn && listBtn) {
         if (mode === 'grid') {
             gridBtn.classList.remove('btn-unselected'); gridBtn.classList.add('btn-selected');
-            listBtn.classList.remove('btn-selected');  listBtn.classList.add('btn-unselected');
+            listBtn.classList.remove('btn-selected'); listBtn.classList.add('btn-unselected');
         } else {
             listBtn.classList.remove('btn-unselected'); listBtn.classList.add('btn-selected');
-            gridBtn.classList.remove('btn-selected');  gridBtn.classList.add('btn-unselected');
+            gridBtn.classList.remove('btn-selected'); gridBtn.classList.add('btn-unselected');
         }
     }
 
@@ -44,14 +44,19 @@ function setViewMode(mode) {
     applyViewModeClasses(mode);
 }
 
+<<<<<<< develop-v3-yakup
+window.openFilePreview = function (url, attributesRaw) {
+    if (!url) return console.warn('data-url bulunamadı');
+=======
 window.openFilePreview = function(url, attributesRaw) {
     if (!url) return console.warn('data-url not found');
+>>>>>>> develop-v3
 
     var attributes = {};
     if (attributesRaw) {
-        try { 
+        try {
             if (typeof attributesRaw === 'string') {
-                attributes = JSON.parse(attributesRaw.replace(/'/g, '"')); 
+                attributes = JSON.parse(attributesRaw.replace(/'/g, '"'));
             } else {
                 attributes = attributesRaw;
             }
@@ -59,28 +64,33 @@ window.openFilePreview = function(url, attributesRaw) {
         catch (err) { console.warn('data-attributes could not be parsed.', err); }
     }
 
+<<<<<<< develop-v3-yakup
+    var title = attributes.title || 'Başlık yok';
+    var iconClass = attributes.icon_class_php || 'fa fa-file';
+=======
     var title = attributes.title || 'No Title';
     var iconClass = attributes.icon_class_php || 'fa fa-file'; 
+>>>>>>> develop-v3
     var mime_type = attributes.mime_type;
     var fileId = attributes.id_storage;
     var shareToken = attributes.share_token;
-    
+
     if (shareToken) {
         url = '/storage/default/view-share?id=' + shareToken + '&file_id=' + fileId;
     } else if (fileId && url.indexOf('get-file') === -1 && url.indexOf('view-share') === -1) {
         url = '/storage/default/get-file?id=' + fileId;
     }
-    
+
     if (fileId && window.storageConfig && window.storageConfig.trackAccessUrl) {
         $.ajax({
             url: window.storageConfig.trackAccessUrl,
             type: 'GET',
             data: { id: fileId },
             dataType: 'json',
-            success: function(response) {
+            success: function (response) {
                 console.log('Access tracked:', response);
             },
-            error: function(xhr, status, error) {
+            error: function (xhr, status, error) {
                 console.error('Access tracking failed:', error);
             }
         });
@@ -114,11 +124,11 @@ window.openFilePreview = function(url, attributesRaw) {
         content += '</div>';
         content += '</div>';
 
-        setTimeout(function() {
+        setTimeout(function () {
             $('#filePreviewContent .loading-spinner').removeClass('show');
         }, 500);
 
-    } else if ([0,1,17,25].includes(parseInt(mime_type))) {
+    } else if ([0, 1, 17, 25].includes(parseInt(mime_type))) {
         content = '<div class="file-preview text-center">';
         content += '<img src="' + url + '" alt="' + title + '" ';
         content += 'class="file-icon img-fluid" ';
@@ -127,7 +137,7 @@ window.openFilePreview = function(url, attributesRaw) {
         content += 'onerror="handlePreviewError(\'Failed to load image.\')"/>';
         content += '</div>';
 
-    } else if ([9,11,12,13].includes(parseInt(mime_type))) {
+    } else if ([9, 11, 12, 13].includes(parseInt(mime_type))) {
         content = '<div class="file-preview text-center">';
         content += '<video controls autoplay style="max-width:100%;max-height:70vh;" ';
         content += 'oncanplay="$(\'#filePreviewContent .loading-spinner\').removeClass(\'show\')" ';
@@ -149,12 +159,12 @@ window.openFilePreview = function(url, attributesRaw) {
         content += '</div>';
         content += '</div>';
 
-        setTimeout(function() {
+        setTimeout(function () {
             $('#filePreviewContent .loading-spinner').removeClass('show');
         }, 100);
     }
 
-    setTimeout(function() {
+    setTimeout(function () {
         $('#filePreviewContent').html(content);
     }, 200);
 }
@@ -168,7 +178,41 @@ function handleMultipleFilePreview(files) {
     openFilePreview(firstFile.url, firstFile.attributes);
 }
 
-$(document).on('dblclick', '.file-preview', function (e) {
+function getCurrentViewMode() {
+    const filesSection = document.getElementById('files-section');
+    const fileList = document.getElementById('file-list');
+
+    // If we have explicit view class flags, use them.
+    if (filesSection) {
+        if (filesSection.classList.contains('list-view')) return 'list';
+        if (filesSection.classList.contains('grid-view')) return 'grid';
+    }
+
+    // Fallback: infer from the file list layout class.
+    if (fileList && fileList.classList.contains('file-grid')) {
+        return 'grid';
+    }
+
+    return 'list';
+}
+
+$(document).on('dblclick', '.file-preview, .file-header', function (e) {
+    // Only open preview when double-clicking the right element based on current view mode.
+    // - Grid view: only dblclick on the preview tile should open the modal.
+    // - List view: dblclick on the row header should open the modal.
+    const viewMode = getCurrentViewMode();
+    if (viewMode === 'grid' && !$(this).hasClass('file-preview')) {
+        return;
+    }
+    if (viewMode === 'list' && !$(this).hasClass('file-header')) {
+        return;
+    }
+
+    // Ignore dblclicks on menu buttons / checkboxes so actions still work.
+    if ($(e.target).closest('.file-more-options, .file-select-checkbox').length) {
+        return;
+    }
+
     e.preventDefault();
     var fileItem = $(this).closest('.file-item');
     var url = fileItem.data('url');
@@ -181,11 +225,11 @@ $(document).on('show.bs.modal', '#file-preview-modal', function () {
     var defaultModalZ = 1050;
 
     var maxZ = 0;
-    $('.modal:visible').each(function() {
+    $('.modal:visible').each(function () {
         var z = parseInt($(this).css('z-index')) || 0;
         if (z > maxZ) maxZ = z;
     });
-    $('.modal-backdrop').each(function() {
+    $('.modal-backdrop').each(function () {
         var z = parseInt($(this).css('z-index')) || 0;
         if (z > maxZ) maxZ = z;
     });
