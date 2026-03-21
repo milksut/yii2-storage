@@ -262,7 +262,7 @@ class Storage extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['type'], 'required'],
+            [['type'], 'safe'],
             [['type'], 'in', 'range' => [self::TYPE_FILE, self::TYPE_DIRECTORY]],
             [['type'], 'default', 'value' => self::TYPE_FILE],
             [['title'], 'required', 'when' => function ($model) {
@@ -739,6 +739,11 @@ class Storage extends \yii\db\ActiveRecord
     public function getFilePath()
     {
         return Yii::$app->urlManager->baseUrl . '/data/' . $this->name;
+    }
+
+    public function getFileUrl()
+    {
+        return Yii::$app->urlManager->baseUrl . '/storage/default/get-file?id=' . $this->id_storage;
     }
 
     /**

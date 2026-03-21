@@ -105,8 +105,16 @@ class StorageFileServer
         $storagePath = self::getStoragePath();
 
         if ($thumb) {
-            $thumbPath = $storagePath . '/thumb_' . $file->name;
-            $servePath = file_exists($thumbPath) ? $thumbPath : ($storagePath . '/' . $file->name);
+            $thumbPath  = $storagePath . '/thumb_' . $file->name;
+            $origPath   = $storagePath . '/' . $file->name;
+
+            if (!file_exists($thumbPath) && file_exists($origPath)) {
+                if ($file->generateThumbnail($origPath, $thumbPath)) {
+                    $file->thumbnail = 'thumb_' . $file->name;
+                    $file->save(false, ['thumbnail']);
+                } 
+            }
+            $servePath  = file_exists($thumbPath) ? $thumbPath : $origPath;
             $serveTitle = 'thumb_' . $file->title;
         } else {
             $servePath  = $storagePath . '/' . $file->name;
