@@ -15,10 +15,8 @@ class m220228_125709_storage_rule_rbac extends Migration
         $user = $auth->getRole('user');
 
         $permissions = [
-            'storageWebDefaultUploadFile',
             'storageWebDefaultDownloadFile',
             'storageWebDefaultRenameFile',
-            'storageWebDefaultUpdateFile',
             'storageWebDefaultShareFile',
             'storageWebDefaultCopyFile',
             'storageWebDefaultDeleteFile',

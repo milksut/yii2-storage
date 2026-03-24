@@ -96,6 +96,9 @@
           }
           showShareToast(config.messages.shareCreated);
           refreshSharesList();
+          if (type === "link" && response.link) {
+            showLinkActiveState(response.link, response.share_id);
+          }
           // Reset form
           if (type === "user")
             document.getElementById("shareUserSelect").value = "";
@@ -151,6 +154,72 @@
         showShareToast(config.messages.error, false);
       },
     });
+  };
+
+  /**
+   * Revoke the link share from the Link tab
+   */
+  window.revokeLinkShare = function () {
+    const config = window.shareConfig;
+    if (!config) return;
+    const btn = document.getElementById("revokeLinkBtn");
+    if (!btn) return;
+    const shareId = btn.dataset.shareId;
+    if (!shareId) return;
+
+    $.ajax({
+      url: config.urls.revokeShare + "?id=" + shareId,
+      type: "POST",
+      headers: { "X-CSRF-Token": $('meta[name="csrf-token"]').attr("content") },
+      success: function (response) {
+        if (response.success) {
+          showShareToast(config.messages.shareRevoked);
+          showLinkCreateState();
+          refreshSharesList();
+        } else {
+          showShareToast(response.message || config.messages.error, false);
+        }
+      },
+      error: function () {
+        showShareToast(config.messages.error, false);
+      },
+    });
+  };
+
+  /**
+   * Switch Link tab to "active link" view
+   */
+  window.showLinkActiveState = function (url, shareId, permLabel, expiry) {
+    var activeEl  = document.getElementById("link-active-state");
+    var createEl  = document.getElementById("link-create-state");
+    var input     = document.getElementById("existingLinkUrl");
+    var revokeBtn = document.getElementById("revokeLinkBtn");
+    var permEl    = document.getElementById("linkPermLabel");
+    var expiryEl  = document.getElementById("linkExpiryLabel");
+
+    if (input)    input.value = url;
+    if (revokeBtn && shareId) revokeBtn.dataset.shareId = shareId;
+    if (permEl && permLabel)  permEl.textContent  = permLabel;
+    if (expiryEl && expiry)   expiryEl.textContent = expiry;
+    if (activeEl) activeEl.style.display = "";
+    if (createEl) createEl.style.display = "none";
+
+    window.generatedShareLink = url;
+  };
+
+  /**
+   * Switch Link tab to "create link" view
+   */
+  window.showLinkCreateState = function () {
+    var activeEl = document.getElementById("link-active-state");
+    var createEl = document.getElementById("link-create-state");
+    var revokeBtn = document.getElementById("revokeLinkBtn");
+
+    if (activeEl) activeEl.style.display = "none";
+    if (createEl) createEl.style.display = "";
+    if (revokeBtn) revokeBtn.dataset.shareId = "";
+
+    window.generatedShareLink = "";
   };
 
   /**
@@ -276,12 +345,60 @@
   };
 
   /**
+   * Copy existing link shown in the Link tab input field
+   */
+  window.copyExistingLink = function (btn) {
+    var input = document.getElementById("existingLinkUrl");
+    if (!input || !input.value) return;
+    var linkToCopy = input.value;
+
+    function onCopied() {
+      var original = btn.innerHTML;
+      var copied = btn.dataset.copied || "Copied!";
+      btn.innerHTML = '<i class="fa fa-check me-1"></i>' + copied;
+      btn.disabled = true;
+      setTimeout(function () {
+        btn.innerHTML = original;
+        btn.disabled = false;
+      }, 2000);
+    }
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(linkToCopy).then(onCopied).catch(function () {
+        copyViaInput(input, onCopied);
+      });
+    } else {
+      copyViaInput(input, onCopied);
+    }
+  };
+
+  // Copies using the input element itself — works inside Bootstrap modals (focus trap safe)
+  function copyViaInput(input, onCopied) {
+    input.removeAttribute("readonly");
+    input.select();
+    input.setSelectionRange(0, input.value.length);
+    try {
+      document.execCommand("copy");
+      if (onCopied) onCopied();
+    } catch (e) {
+      console.error("Failed to copy:", e);
+    } finally {
+      input.setAttribute("readonly", "");
+    }
+  }
+
+
+  /**
    * Handle copy link button
    */
   window.handleCopyLink = function (btn) {
     var linkToCopy = window.generatedShareLink || "";
     if (!linkToCopy) {
-      showShareToast("Please generate a link first", false);
+      var config = window.shareConfig;
+      showShareToast(
+        (config && config.messages && config.messages.generateFirst) || "Please generate a link first",
+        false
+      );
       return;
     }
 

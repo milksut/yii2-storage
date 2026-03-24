@@ -28,7 +28,7 @@ while ($current) {
         $isFirst = false;
     } else {
         $urlFileId = ($current->id_storage == $share->id_directory) ? null : $current->id_storage;
-        $breadcrumbs[] = ['label' => Html::encode($current->name), 'url' => ['/storage/default/view-share', 'id' => $share->id_share, 'file_id' => $urlFileId]];
+        $breadcrumbs[] = ['label' => Html::encode($current->name), 'url' => ['/storage/default/view-share', 'token' => $share->share_token, 'file_id' => $urlFileId]];
     }
     
     if ($current->id_storage == $share->id_directory || !$current->id_directory) {
@@ -53,7 +53,7 @@ $actions = [];
 
 // Everyone: Download and Copy
 $actions[] = Html::a(Html::tag('i', '', ['class' => 'fa fa-download']), 
-    ['/storage/default/view-share', 'id' => $share->id_share, 'download' => true], 
+    ['/storage/default/view-share', 'token' => $share->share_token, 'download' => true], 
     ['class' => 'btn btn-info btn-sm', 'title' => Module::t('Download')]);
 
 $actions[] = Html::button(Html::tag('i', '', ['class' => 'fa fa-copy']), 
@@ -125,7 +125,7 @@ if ($hasManageAccess) {
                             <?= Html::beginTag('div', [
                                 'class' => 'folder-item d-flex align-items-center', 
                                 'style' => 'cursor: pointer;', 
-                                'onclick' => "window.location.href='" . Url::to(['/storage/default/view-share', 'id' => $share->id_share, 'file_id' => $dir->id_storage]) . "'"
+                                'onclick' => "window.location.href='" . Url::to(['/storage/default/view-share', 'token' => $share->share_token, 'file_id' => $dir->id_storage]) . "'"
                             ]) ?>
                                 <?= Html::tag('i', '', ['class' => 'fa fa-folder folder-icon text-warning me-2', 'aria-hidden' => 'true']) ?>
                                 <?= Html::tag('span', Html::encode($dir->name), ['class' => 'folder-name']) ?>
@@ -182,7 +182,7 @@ if ($hasManageAccess) {
 
                     $content .= Html::beginTag('div', [
                         'class' => 'file-item',
-                        'data-url' => Url::to(['/storage/default/view-share', 'id' => $share->id_share, 'file_id' => $itemModel->id_storage]),
+                        'data-url' => Url::to(['/storage/default/view-share', 'token' => $share->share_token, 'file_id' => $itemModel->id_storage]),
                         'data-attributes' => json_encode([
                             'id_storage' => $itemModel->id_storage,
                             'share_token' => $share->id_share,
@@ -214,7 +214,7 @@ if ($hasManageAccess) {
                     $dropdownItems = [];
                     $dropdownItems[] = [
                         'label' => Html::tag('i', '', ['class' => 'fa fa-download me-2']) . Module::t('Download'),
-                        'url' => ['/storage/default/view-share', 'id' => $share->id_share, 'file_id' => $itemModel->id_storage, 'download' => true],
+                        'url' => ['/storage/default/view-share', 'token' => $share->share_token, 'file_id' => $itemModel->id_storage, 'download' => true],
                         'linkOptions' => ['class' => 'dropdown-item', 'data-pjax' => 0]
                     ];
                     $dropdownItems[] = [
@@ -290,7 +290,7 @@ if ($hasManageAccess) {
                     
                     // Fetch real thumbnails for images using our new action
                     if (in_array(intval($itemModel->mime_type), [0, 1, 17, 25])) {
-                        $thumbUrl = Url::to(['/storage/default/view-share', 'id' => $share->id_share, 'file_id' => $itemModel->id_storage, 'type' => 'thumb']);
+                        $thumbUrl = Url::to(['/storage/default/view-share', 'token' => $share->share_token, 'file_id' => $itemModel->id_storage, 'type' => 'thumb']);
                         $content .= Html::img($thumbUrl, [
                             'alt' => $itemModel->title,
                             'class' => 'file-icon img-fluid',

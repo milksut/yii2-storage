@@ -91,7 +91,6 @@ class DefaultController extends RestActiveController
             case 'update':
             case 'delete':
             case 'get-file':
-                // Permission checks moved to individual actions for share support
                 break;
             case 'create':
                 if (!Yii::$app->user->can('storageApiDefaultCreate'))
@@ -234,10 +233,8 @@ class DefaultController extends RestActiveController
         if (
             !\Yii::$app->user->can('storageApiDefaultUpload') &&
             !\Yii::$app->workspace->can('storage', 'storageApiDefaultUpload') &&
-            !\Yii::$app->user->can('storageApiDefaultUploadFile') &&
-            !\Yii::$app->workspace->can('storage', 'storageApiDefaultUploadFile') &&
-            !\Yii::$app->user->can('storageWebDefaultUploadFile') &&
-            !\Yii::$app->workspace->can('storage', 'storageWebDefaultUploadFile')
+            !\Yii::$app->user->can('storageApiDefaultUploadOwn') &&
+            !\Yii::$app->workspace->can('storage', 'storageApiDefaultUploadOwn')
         ) {
             throw new \yii\web\ForbiddenHttpException(Module::t('You are not allowed to upload files.'));
         }

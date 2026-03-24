@@ -25,7 +25,7 @@ $actions = [];
 
 // Everyone: Download and Copy
 $actions[] = Html::a(Html::tag('i', '', ['class' => 'fa fa-download']), 
-    ['/storage/default/view-share', 'id' => $share->id_share, 'download' => true], 
+    ['/storage/default/view-share', 'token' => $share->share_token, 'download' => true], 
     ['class' => 'btn btn-info btn-sm', 'title' => Module::t('Download')]);
 
 $actions[] = Html::button(Html::tag('i', '', ['class' => 'fa fa-copy']), 
@@ -59,7 +59,7 @@ if ($hasManageAccess) {
         <?= Html::beginTag('div', ['class' => 'w-100 h-100 d-flex align-items-center justify-content-center ' . (!$model->isImage() ? 'bg-transparent text-secondary' : 'bg-transparent')]) ?>
             <?= Html::beginTag('div', ['class' => 'text-center w-100 h-100 d-flex align-items-center justify-content-center overflow-auto']) ?>
                 <?php if ($model->isImage()): ?>
-                    <?= Html::img(['/storage/default/view-share', 'id' => $share->id_share, 'download' => true], ['class' => 'img-fluid', 'style' => 'width: 100%; height: 100%; object-fit: contain;']) ?>
+                    <?= Html::img(['/storage/default/view-share', 'token' => $share->share_token, 'download' => true], ['class' => 'img-fluid', 'style' => 'width: 100%; height: 100%; object-fit: contain;']) ?>
                 <?php else: ?>
                     <?= Html::tag('i', '', ['class' => $model->getFileIconClass() . ' fa-5x mb-4 text-secondary']) ?>
                 <?php endif; ?>

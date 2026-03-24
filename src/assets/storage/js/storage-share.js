@@ -76,7 +76,7 @@ window.openFilePreview = function(url, attributesRaw) {
     var shareToken = attributes.share_token;
 
     if (shareToken) {
-        url = '/storage/default/view-share?id=' + shareToken + '&file_id=' + fileId;
+        url = '/storage/default/view-share?token=' + shareToken + '&file_id=' + fileId;
     } else if (fileId && url.indexOf('get-file') === -1 && url.indexOf('view-share') === -1) {
         url = '/storage/default/get-file?id=' + fileId;
     }
