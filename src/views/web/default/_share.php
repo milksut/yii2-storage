@@ -11,7 +11,7 @@ use portalium\workspace\models\Workspace;
 /**
  * Share Modal View
  * @var $model \portalium\storage\models\Storage|null - for file share
- * @var $directory \portalium\storage\models\StorageDirectory|null - for directory share
+ * @var $directory \portalium\storage\models\Storage|null - for directory share (type=directory)
  * @var $shareType string - 'file', 'directory', or 'storage'
  * @var $userId int|null - for full storage share
  */
@@ -29,7 +29,7 @@ if ($isFile) {
     $access = ($model->access == 1) ? 'public' : 'private';
     $shares = StorageShare::getShares($model)->all();
 } elseif ($isDirectory) {
-    $itemId = $directory->id_directory;
+    $itemId = $directory->id_storage;
     $itemName = $directory->name;
     $itemIcon = 'fa-folder';
     $access = 'private';
@@ -75,7 +75,7 @@ $shareConfigJson = json_encode([
     'shareType' => $shareType,
     'itemId' => $itemId,
     'idStorage' => $isFile ? $model->id_storage : null,
-    'idDirectory' => $isDirectory ? $directory->id_directory : null,
+    'idDirectory' => $isDirectory ? $directory->id_storage : null, // add id_storage for directory
     'idUserOwner' => $isFullStorage ? $userId : null,
     'urls' => [
         'createShare' => Yii::$app->urlManager->createUrl(['/storage/default/create-share']),
@@ -96,13 +96,24 @@ $shareConfigJson = json_encode([
         'public' => Module::t('Public'),
         'restricted' => Module::t('Restricted'),
         'noSharesYet' => Module::t('No shares yet'),
+        'generateFirst' => Module::t('Please generate a link first'),
     ],
 ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
 
+// Find existing valid link share to pre-populate the copy link button
+$existingLinkUrl = '';
+foreach ($shares as $share) {
+    if ($share->shared_with_type === StorageShare::TYPE_LINK && $share->is_active && !$share->isExpired()) {
+        $existingLinkUrl = Yii::$app->urlManager->createAbsoluteUrl(['/storage/default/view-share', 'token' => $share->share_token]);
+        break;
+    }
+}
 ?>
 <script>
 window.shareConfig = <?= $shareConfigJson ?>;
+window.generatedShareLink = <?= json_encode($existingLinkUrl) ?>;
 </script>
+
 <?php
 
 Modal::begin([
@@ -110,15 +121,6 @@ Modal::begin([
     'title' => Html::tag('i', '', ['class' => 'fa ' . $itemIcon . ' me-2']) . Module::t('Share') . ': ' . Html::encode($itemName),
     'dialogOptions' => ['class' => 'modal-dialog-centered modal-lg'],
     'footer' => Button::widget([
-        'label' => Html::tag('i', '', ['class' => 'fa fa-link me-2']) . Module::t('Copy Link'),
-        'encodeLabel' => false,
-        'options' => [
-            'class' => 'btn btn-outline-secondary',
-            'id' => 'copyLink',
-            'data-copied' => htmlspecialchars(Module::t('Copied!'), ENT_QUOTES, 'UTF-8'),
-            'onclick' => 'handleCopyLink(this)'
-        ],
-    ]) . ' ' . Button::widget([
         'label' => Module::t('Done'),
         'options' => [
             'class' => 'btn btn-success',
@@ -262,29 +264,122 @@ Modal::begin([
         'id' => 'link-panel',
         'role' => 'tabpanel'
     ]) ?>
-        <?= Html::beginTag('div', ['class' => 'row g-3 align-items-end mb-3']) ?>
-            <?= Html::beginTag('div', ['class' => 'col-md-5']) ?>
-                <?= Html::tag('label', Module::t('Permission Level'), ['class' => 'form-label fw-semibold']) ?>
-                <?= Html::beginTag('select', ['class' => 'form-select', 'id' => 'shareLinkPermission']) ?>
-                    <?php foreach ($permissionLevels as $value => $label): ?>
-                        <?= Html::tag('option', $label, ['value' => $value]) ?>
-                    <?php endforeach; ?>
-                <?= Html::endTag('select') ?>
+        <?php
+        $existingLinkShare = null;
+        foreach ($shares as $share) {
+            if ($share->shared_with_type === StorageShare::TYPE_LINK && $share->is_active && !$share->isExpired()) {
+                $existingLinkShare = $share;
+                break;
+            }
+        }
+        $hasExistingLink   = $existingLinkShare !== null;
+        $existingLinkShareUrl = $hasExistingLink
+            ? Yii::$app->urlManager->createAbsoluteUrl(['/storage/default/view-share', 'token' => $existingLinkShare->share_token])
+            : '';
+        $existingShareId   = $hasExistingLink ? $existingLinkShare->id_share : 0;
+        ?>
+
+        <?php
+        $initialPermLabel = $hasExistingLink ? $existingLinkShare->getPermissionLabel() : '';
+        $initialExpiry    = $hasExistingLink
+            ? ($existingLinkShare->expires_at
+                ? Yii::$app->formatter->asDatetime($existingLinkShare->expires_at, 'short')
+                : Module::t('No expiration'))
+            : '';
+        ?>
+
+        <?php // --- Active link state --- ?>
+        <?= Html::beginTag('div', ['id' => 'link-active-state', 'style' => $hasExistingLink ? '' : 'display:none']) ?>
+
+            <?php // Header row: icon + title + permission badge ?>
+            <?= Html::beginTag('div', ['class' => 'd-flex align-items-center gap-3 mb-3']) ?>
+                <?= Html::beginTag('div', [
+                    'class' => 'rounded-circle d-flex align-items-center justify-content-center flex-shrink-0',
+                    'style' => 'width:40px;height:40px;background:rgba(25,135,84,.1)'
+                ]) ?>
+                    <?= Html::tag('i', '', ['class' => 'fa fa-link text-success']) ?>
+                <?= Html::endTag('div') ?>
+                <?= Html::beginTag('div', ['class' => 'flex-grow-1']) ?>
+                    <?= Html::tag('div', Module::t('Anyone with the link'), ['class' => 'fw-semibold']) ?>
+                    <?= Html::beginTag('div', ['class' => 'd-flex align-items-center gap-2 mt-1']) ?>
+                        <?= Html::tag('span', $initialPermLabel, [
+                            'id'    => 'linkPermLabel',
+                            'class' => 'badge bg-success-subtle text-success-emphasis rounded-pill',
+                            'style' => 'font-size:0.75rem'
+                        ]) ?>
+                        <?= Html::tag('span', '·', ['class' => 'text-muted']) ?>
+                        <?= Html::tag('small', $initialExpiry, ['id' => 'linkExpiryLabel', 'class' => 'text-muted']) ?>
+                    <?= Html::endTag('div') ?>
+                <?= Html::endTag('div') ?>
+                <?= Html::button(
+                    Html::tag('i', '', ['class' => 'fa fa-times me-1']) . Module::t('Revoke'),
+                    [
+                        'type'          => 'button',
+                        'class'         => 'btn btn-sm btn-outline-danger flex-shrink-0',
+                        'id'            => 'revokeLinkBtn',
+                        'data-share-id' => $existingShareId,
+                        'onclick'       => 'revokeLinkShare()',
+                    ]
+                ) ?>
             <?= Html::endTag('div') ?>
-            <?= Html::beginTag('div', ['class' => 'col-md-4']) ?>
-                <?= Html::tag('label', Module::t('Expiration date (optional)'), ['class' => 'form-label fw-semibold']) ?>
-                <?= Html::input('datetime-local', '', '', ['class' => 'form-control', 'id' => 'shareLinkExpiry']) ?>
-            <?= Html::endTag('div') ?>
-            <?= Html::beginTag('div', ['class' => 'col-md-3']) ?>
+
+            <?php // URL bar ?>
+            <?= Html::beginTag('div', ['class' => 'input-group']) ?>
+                <?= Html::input('text', '', $existingLinkShareUrl, [
+                    'class'    => 'form-control bg-light text-muted',
+                    'id'       => 'existingLinkUrl',
+                    'readonly' => true,
+                    'style'    => 'font-size:0.85rem',
+                ]) ?>
                 <?= Button::widget([
-                    'label' => Html::tag('i', '', ['class' => 'fa fa-link me-1']) . Module::t('Generate link'),
+                    'label'       => Html::tag('i', '', ['class' => 'fa fa-copy me-1']) . Module::t('Copy'),
                     'encodeLabel' => false,
-                    'options' => [
-                        'class' => 'btn btn-success w-100',
-                        'onclick' => 'createShare("link")',
+                    'options'     => [
+                        'class'       => 'btn btn-success',
+                        'onclick'     => 'copyExistingLink(this)',
+                        'data-copied' => htmlspecialchars(Module::t('Copied!'), ENT_QUOTES, 'UTF-8'),
+                        'title'       => Module::t('Copy Link'),
                     ],
                 ]) ?>
             <?= Html::endTag('div') ?>
+
+        <?= Html::endTag('div') ?>
+
+        <?php // --- Create link state --- ?>
+        <?= Html::beginTag('div', ['id' => 'link-create-state', 'style' => $hasExistingLink ? 'display:none' : '']) ?>
+
+            <?php // Placeholder card ?>
+            <?= Html::beginTag('div', [
+                'class' => 'd-flex flex-column align-items-center justify-content-center gap-2 rounded-3 text-muted mb-3',
+                'style' => 'border:2px dashed #dee2e6;padding:1.5rem 1rem'
+            ]) ?>
+                <?= Html::tag('i', '', ['class' => 'fa fa-link fa-2x mb-1', 'style' => 'opacity:.35']) ?>
+                <?= Html::tag('span', Module::t('No active link yet'), ['class' => 'fw-semibold']) ?>
+                <?= Html::tag('small', Module::t('Generate a link to share this item with anyone.'), ['class' => 'text-center']) ?>
+            <?= Html::endTag('div') ?>
+
+            <?= Html::beginTag('div', ['class' => 'row g-2 align-items-end']) ?>
+                <?= Html::beginTag('div', ['class' => 'col-md-5']) ?>
+                    <?= Html::tag('label', Module::t('Permission Level'), ['class' => 'form-label fw-semibold small']) ?>
+                    <?= Html::beginTag('select', ['class' => 'form-select form-select-sm', 'id' => 'shareLinkPermission']) ?>
+                        <?php foreach ($permissionLevels as $value => $label): ?>
+                            <?= Html::tag('option', $label, ['value' => $value]) ?>
+                        <?php endforeach; ?>
+                    <?= Html::endTag('select') ?>
+                <?= Html::endTag('div') ?>
+                <?= Html::beginTag('div', ['class' => 'col-md-4']) ?>
+                    <?= Html::tag('label', Module::t('Expires (optional)'), ['class' => 'form-label fw-semibold small']) ?>
+                    <?= Html::input('datetime-local', '', '', ['class' => 'form-control form-control-sm', 'id' => 'shareLinkExpiry']) ?>
+                <?= Html::endTag('div') ?>
+                <?= Html::beginTag('div', ['class' => 'col-md-3']) ?>
+                    <?= Button::widget([
+                        'label'       => Html::tag('i', '', ['class' => 'fa fa-link me-1']) . Module::t('Generate'),
+                        'encodeLabel' => false,
+                        'options'     => ['class' => 'btn btn-success btn-sm w-100', 'onclick' => 'createShare("link")'],
+                    ]) ?>
+                <?= Html::endTag('div') ?>
+            <?= Html::endTag('div') ?>
+
         <?= Html::endTag('div') ?>
     <?= Html::endTag('div') ?>
 <?= Html::endTag('div') ?>
@@ -301,7 +396,8 @@ Modal::begin([
     'class' => 'list-group list-group-flush rounded-3',
     'style' => 'max-height: 250px; overflow-y: auto;'
 ]) ?>
-    <?php if (empty($shares)): ?>
+    <?php $namedShares = array_filter($shares, fn($s) => $s->shared_with_type !== StorageShare::TYPE_LINK); ?>
+    <?php if (empty($namedShares)): ?>
         <?= Html::beginTag('div', [
             'class' => 'text-muted text-center py-3',
             'id' => 'noSharesMessage'
@@ -310,7 +406,7 @@ Modal::begin([
             <?= Module::t('No shares yet') ?>
         <?= Html::endTag('div') ?>
     <?php else: ?>
-        <?php foreach ($shares as $share): ?>
+        <?php foreach ($namedShares as $share): ?>
             <?= Html::beginTag('div', [
                 'class' => 'list-group-item d-flex justify-content-between align-items-center py-3',
                 'data-share-id' => $share->id_share

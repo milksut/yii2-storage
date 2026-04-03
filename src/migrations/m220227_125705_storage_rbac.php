@@ -13,6 +13,20 @@ class m220227_125705_storage_rbac extends Migration
             'storageWebDefaultIndex',
             'storageWebDefaultIndexOwn',
             'storageWebDefaultManage',
+            'storageWebDefaultDownloadFile',
+            'storageWebDefaultRenameFile',
+            'storageWebDefaultShareFile',
+            'storageWebDefaultCopyFile',
+            'storageWebDefaultDeleteFile',
+            'storageWebDefaultPickerModal',
+            'storageWebDefaultFileList',
+            'storageWebDefaultSearch',
+            'storageWebDefaultNewFolder',
+            'storageWebDefaultRenameFolder',
+            'storageWebDefaultDeleteFolder',
+            'storageWebDefaultdeleteFolderRecursive',
+            'storageWebDefaultManageDirectory',
+            'storageWebDefaultGetFile'
         ];
 
         foreach ($permissionNames as $permissionName) {
@@ -31,6 +45,19 @@ class m220227_125705_storage_rbac extends Migration
             'storageWebDefaultIndex',
             'storageWebDefaultIndexOwn',
             'storageWebDefaultManage',
+            'storageWebDefaultDownloadFile',
+            'storageWebDefaultRenameFile',
+            'storageWebDefaultShareFile',
+            'storageWebDefaultCopyFile',
+            'storageWebDefaultDeleteFile',
+            'storageWebDefaultPickerModal',
+            'storageWebDefaultFileList',
+            'storageWebDefaultSearch',
+            'storageWebDefaultNewFolder',
+            'storageWebDefaultRenameFolder',
+            'storageWebDefaultDeleteFolder',
+            'storageWebDefaultdeleteFolderRecursive',
+            'storageWebDefaultManageDirectory',
         ];
 
         foreach ($permissionNames as $permissionName) {

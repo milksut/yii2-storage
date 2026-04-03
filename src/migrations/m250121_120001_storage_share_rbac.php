@@ -19,7 +19,6 @@ class m250121_120001_storage_share_rbac extends Migration
             'storageWebDefaultManageShares',
             'storageWebDefaultRevokeShare',
             'storageWebDefaultUpdateSharePermission',
-            'storageWebDefaultViewShares',
             
             // API permissions
             'storageApiDefaultShareFile',
@@ -43,7 +42,6 @@ class m250121_120001_storage_share_rbac extends Migration
         $userPermissions = [
             'storageWebDefaultShareFile',
             'storageWebDefaultShareDirectory',
-            'storageWebDefaultViewShares',
             'storageApiDefaultShareFile',
             'storageApiDefaultShareDirectory',
             'storageApiDefaultGetShares',
@@ -67,7 +65,6 @@ class m250121_120001_storage_share_rbac extends Migration
             'storageWebDefaultManageShares',
             'storageWebDefaultRevokeShare',
             'storageWebDefaultUpdateSharePermission',
-            'storageWebDefaultViewShares',
             'storageApiDefaultShareFile',
             'storageApiDefaultShareDirectory',
             'storageApiDefaultShareFullStorage',

@@ -121,12 +121,13 @@ use yii\helpers\Url;
                     <?= Html::endTag('td') ?>
                     <?= Html::beginTag('td', ['class' => 'text-end']) ?>
                         <?php if ($share->shared_with_type === StorageShare::TYPE_LINK && $itemExists && $isActive && !$isExpired): ?>
+                            <?php $shareUrl = \yii\helpers\Url::to(['/storage/default/view-share', 'token' => $share->share_token], true); ?>
                             <?= Html::button(
                                 '',
                                 [
                                     'class' => 'fa fa-copy btn btn-sm btn-info',
                                     'title' => Module::t('Copy Link'),
-                                    'onclick' => "copyShareLink('{$share->share_token}')",
+                                    'onclick' => 'copyShareLinkUrl(' . json_encode($shareUrl) . ', this)',
                                 ]
                             ) ?>
                         <?php endif; ?>
@@ -159,47 +160,83 @@ use yii\helpers\Url;
 <?= Html::endTag('div') ?>
 
 <?php
-// Register JavaScript for copy link and revoke
-$this->registerJs(<<<JS
-function copyShareLink(token) {
-    const url = window.location.origin + '/storage/default/get-file?access_token=' + token;
-    navigator.clipboard.writeText(url).then(function() {
-        alert('{Module::t('Link copied to clipboard!')}');
-    }).catch(function(err) {
-        console.error('Failed to copy:', err);
-        alert('{Module::t('Failed to copy link')}');
-    });
-}
-
-function revokeShareConfirm(shareId) {
-    if (!confirm('{Module::t('Are you sure you want to revoke this share?')}')) {
-        return;
-    }
-    
-    $.ajax({
-        url: '/storage/default/revoke-share',
-        type: 'POST',
-        data: { id: shareId },
-        headers: {
-            'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content')
-        },
-        success: function(response) {
-            if (response.success) {
-                // Update the row to show revoked status
-                const row = $('[data-share-id="' + shareId + '"]');
-                row.addClass('text-muted');
-                row.find('.badge.bg-success').removeClass('bg-success').addClass('bg-secondary').text('{Module::t('Revoked')}');
-                row.find('.btn-danger').remove();
-                alert(response.message);
-            } else {
-                alert(response.message || '{Module::t('Failed to revoke share!')}');
-            }
-        },
-        error: function() {
-            alert('{Module::t('An error occurred')}');
-        }
-    });
-}
-JS
-);
+// Pre-compute translated strings for use in JS
+$jsMsgs = json_encode([
+    'copied'       => Module::t('Link copied to clipboard!'),
+    'copyFailed'   => Module::t('Failed to copy link'),
+    'confirmRevoke'=> Module::t('Are you sure you want to revoke this share?'),
+    'revoked'      => Module::t('Revoked'),
+    'revokeFailed' => Module::t('Failed to revoke share!'),
+    'error'        => Module::t('An error occurred'),
+]);
+$csrfParam = json_encode(\Yii::$app->request->csrfParam);
+$csrfToken = json_encode(\Yii::$app->request->csrfToken);
+$revokeUrl  = json_encode(\yii\helpers\Url::to(['/storage/default/revoke-share']));
 ?>
+<?php $this->registerJs(<<<JS
+(function() {
+    var msgs = {$jsMsgs};
+    var csrfParam = {$csrfParam};
+    var csrfToken = {$csrfToken};
+    var revokeUrl  = {$revokeUrl};
+
+    window.copyShareLinkUrl = function(url, btn) {
+        function onCopied() {
+            if (btn) {
+                var orig = btn.className;
+                btn.classList.remove('btn-info');
+                btn.classList.add('btn-success', 'fa-check');
+                btn.classList.remove('fa-copy');
+                setTimeout(function() {
+                    btn.className = orig;
+                }, 2000);
+            }
+        }
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(onCopied).catch(function() {
+                fallbackCopy(url, onCopied);
+            });
+        } else {
+            fallbackCopy(url, onCopied);
+        }
+    };
+
+    function fallbackCopy(text, onCopied) {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try { document.execCommand('copy'); if (onCopied) onCopied(); }
+        catch(e) { alert(msgs.copyFailed); }
+        finally { document.body.removeChild(ta); }
+    }
+
+    window.revokeShareConfirm = function(shareId) {
+        if (!confirm(msgs.confirmRevoke)) return;
+        var postData = {};
+        postData[csrfParam] = csrfToken;
+        postData.id = shareId;
+        $.ajax({
+            url: revokeUrl,
+            type: 'POST',
+            data: postData,
+            success: function(response) {
+                if (response.success) {
+                    var row = $('[data-share-id="' + shareId + '"]');
+                    row.addClass('text-muted');
+                    row.find('.badge.bg-success').removeClass('bg-success').addClass('bg-secondary').text(msgs.revoked);
+                    row.find('.btn-danger').remove();
+                    row.find('.fa-copy').closest('button').remove();
+                } else {
+                    alert(response.message || msgs.revokeFailed);
+                }
+            },
+            error: function() { alert(msgs.error); }
+        });
+    };
+})();
+JS
+); ?>
