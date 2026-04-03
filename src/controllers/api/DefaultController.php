@@ -91,7 +91,6 @@ class DefaultController extends RestActiveController
             case 'update':
             case 'delete':
             case 'get-file':
-                // Permission checks moved to individual actions for share support
                 break;
             case 'create':
                 if (!Yii::$app->user->can('storageApiDefaultCreate'))
@@ -233,7 +232,9 @@ class DefaultController extends RestActiveController
         // Check upload permission
         if (
             !\Yii::$app->user->can('storageApiDefaultUpload') &&
-            !\Yii::$app->workspace->can('storage', 'storageApiDefaultUpload')
+            !\Yii::$app->workspace->can('storage', 'storageApiDefaultUpload') &&
+            !\Yii::$app->user->can('storageApiDefaultUploadOwn') &&
+            !\Yii::$app->workspace->can('storage', 'storageApiDefaultUploadOwn')
         ) {
             throw new \yii\web\ForbiddenHttpException(Module::t('You are not allowed to upload files.'));
         }
@@ -242,7 +243,7 @@ class DefaultController extends RestActiveController
 
         // Check directory permission if uploading to a specific directory
         if ($id_directory !== null) {
-            $directoryModel = \portalium\storage\models\StorageDirectory::findOne($id_directory);
+            $directoryModel = Storage::findOne(['id_storage' => $id_directory, 'type' => Storage::TYPE_DIRECTORY]);
             if ($directoryModel) {
                 // Check global permissions for directory
                 $hasGlobalDirPermission = \Yii::$app->user->can('storageApiDefaultManageDirectory')
@@ -321,49 +322,17 @@ class DefaultController extends RestActiveController
 
     public function actionGetFile($id)
     {
-        $file = Storage::findOne($id);
+        $model = Storage::findOne($id);
 
-        if (!$file) {
+        if (!$model) {
             throw new NotFoundHttpException(Module::t('The requested file does not exist.'));
         }
 
-        // Public files can be downloaded by anyone (including guests)
-        if ($file->access == Storage::ACCESS_PUBLIC) {
-            $path = Yii::$app->basePath . '/../' . Yii::$app->setting->getValue('storage::path') . '/' . $file->name;
-
-            if (file_exists($path)) {
-                return Yii::$app->response->sendFile($path, $file->title . '.' . pathinfo($path, PATHINFO_EXTENSION));
-            } else {
-                throw new NotFoundHttpException(Module::t('The requested file does not exist.'));
-            }
-        }
-
-        // Check global permissions
-        $hasGlobalPermission = \Yii::$app->user->can('storageApiDefaultGetFile')
-            || \Yii::$app->user->can('storageApiDefaultGetFileOwn', ['model' => $file])
-            || \Yii::$app->workspace->can('storage', 'storageApiDefaultGetFile', ['model' => $file]);
-
-        // Check share permissions - VIEW permission is enough for download
-        $hasSharePermission = \portalium\storage\models\StorageShare::hasAccess(
-            \Yii::$app->user->id,
-            $file,
-            null,
-            \portalium\storage\models\StorageShare::PERMISSION_VIEW
-        );
-
-        $appModel = App::find()->where(['api_key' => Yii::$app->request->get('access-token')])->one();
-        
-        if (!$hasGlobalPermission && !$hasSharePermission && $appModel === null) {
-           throw new \yii\web\ForbiddenHttpException(Module::t('You do not have permission to access this file.'));
-        }
-
-        $path = Yii::$app->basePath . '/../' . Yii::$app->setting->getValue('storage::path') . '/' . $file->name;
-
-        if (file_exists($path)) {
-            return Yii::$app->response->sendFile($path, $file->title . '.' . pathinfo($path, PATHINFO_EXTENSION));
-        } else {
-            throw new NotFoundHttpException(Module::t('The requested file does not exist.'));
-        }
+        return \portalium\storage\helpers\StorageFileServer::serve($model, [
+            'thumb'      => Yii::$app->request->get('type') === 'thumb',
+            'permPrefix' => 'storageApiDefault',
+            'appToken'   => Yii::$app->request->get('access-token'),
+        ]);
     }
 
     protected function findModel($id)

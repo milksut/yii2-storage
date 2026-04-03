@@ -22,7 +22,6 @@ class m250122_000001_add_missing_own_permissions extends Migration
         // Web permissions that need Own variant
         $webPermissions = [
             'storageWebDefaultManageShares',
-            'storageWebDefaultViewShares',
             'storageWebDefaultRevokeShare',
             'storageWebDefaultShareDirectory',
             'storageWebDefaultShareFullStorage',
@@ -98,7 +97,6 @@ class m250122_000001_add_missing_own_permissions extends Migration
         $permissions = [
             // Web permissions
             'storageWebDefaultManageSharesOwn',
-            'storageWebDefaultViewSharesOwn',
             'storageWebDefaultRevokeShareOwn',
             'storageWebDefaultShareDirectoryOwn',
             'storageWebDefaultShareFullStorageOwn',
